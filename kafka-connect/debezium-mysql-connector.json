@@ -1,0 +1,17 @@
+{
+    "name": "mysql-connector",
+    "config": {
+      "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+      "database.hostname": "mysql",
+      "database.port": "3306",
+      "database.user": "lminhnguyet",
+      "database.password": "123",
+      "database.server.id": "184054",
+      "database.server.name": "dbserver1",
+      "database.include.list": "brazilian-ecom",
+      "table.include.list": "brazilian-ecom.orders",
+      "database.history.kafka.bootstrap.servers": "broker:9092",
+      "database.history.kafka.topic": "dbhistory.brazilian-ecom",
+      "snapshot.mode": "initial"
+    }
+  }

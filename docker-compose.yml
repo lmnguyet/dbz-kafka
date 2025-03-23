@@ -1,0 +1,74 @@
+# version: '3.1'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    env_file:
+      - env
+    ports:
+      - 3306:3306
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./dataset:/var/lib/mysql-files
+      - ./scripts:/docker-entrypoint-initdb.d
+    command: --local_infile=1
+    networks:
+      - my-network
+  
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - 2181:2181
+    env_file:
+      - env
+    networks:
+      - my-network
+
+  broker:
+    image: confluentinc/cp-server:7.4.0
+    hostname: broker
+    container_name: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 9101:9101
+    env_file:
+      - env
+    networks:
+      - my-network
+
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:7.4.0
+    hostname: control-center
+    container_name: control-center
+    depends_on:
+      - broker
+    env_file:
+      - env
+    ports:
+      - 9021:9021
+    networks:
+      - my-network
+
+  debezium:
+    image: debezium/connect:1.9
+    container_name: debezium
+    depends_on:
+      - broker
+    ports:
+      - 8083:8083
+    env_file:
+      - env
+    volumes:
+      - ./kafka-connect:/kafka-connect
+    networks:
+      - my-network
+
+
+networks:
+  my-network:
