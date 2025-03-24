@@ -51,3 +51,106 @@ echo "CSV import completed."
       - env
     networks:
       - my-network
+
+docker exec -it mysql mysql -u root -p
+docker exec -it mysql mysql -u lminhnguyet -p
+
+curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{\
+    "name": "mysql-connector",\
+    "config": {\
+      "connector.class": "io.debezium.connector.mysql.MySqlConnector",\
+      "tasks.max": "1",\
+      "database.hostname": "mysql",\
+      "database.port": "3306",\
+      "database.user": "lminhnguyet",\
+      "database.password": "123",\
+      "database.server.id": "184054",\
+      "database.server.name": "dbserver1",\
+      "database.include.list": "brazilian_ecom",\
+      "database.history.internal.kafka.bootstrap.servers": "kafka:9092",\
+      "database.history.internal.kafka.topic": "dbhistory.brazilian_ecom"\
+    }\
+  }'
+
+  curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ "name": "mysql-connector01", "config": { "connector.class": "io.debezium.connector.mysql.MySqlConnector", "tasks.max": "1", "database.hostname": "mysql", "database.port": "3306", "database.user": "root", "database.password": "root", "database.server.id": "184054", "topic.prefix": "dbserver1", "database.include.list": "brazilian_ecom", "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", "schema.history.internal.kafka.topic": "schemahistory.brazilian_ecom" } }'
+  curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ "name": "mysql-connector01", "config": { "connector.class": "io.debezium.connector.mysql.MySqlConnector", "tasks.max": "1", "database.hostname": "mysql", "database.port": "3306", "database.user": "root", "database.password": "root", "database.server.id": "184054", "topic.prefix": "dbserver1", "database.include.list": "brazilian_ecom", "schema.history.kafka.bootstrap.servers": "kafka:9092", "schema.history.kafka.topic": "schemahistory.brazilian_ecom" } }'
+
+quyen load data, reload
+
+-- old
+# version: '3.1'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    env_file:
+      - env
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./dataset:/var/lib/mysql-files
+      - ./scripts:/docker-entrypoint-initdb.d
+    command: --local_infile=1
+    networks:
+      - my-network
+  
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - 2181:2181
+    env_file:
+      - env
+    networks:
+      - my-network
+
+  broker:
+    image: confluentinc/cp-server:7.4.0
+    hostname: broker
+    container_name: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 9101:9101
+    env_file:
+      - env
+    networks:
+      - my-network
+
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:7.4.0
+    hostname: control-center
+    container_name: control-center
+    depends_on:
+      - broker
+    env_file:
+      - env
+    ports:
+      - 9021:9021
+    networks:
+      - my-network
+
+  debezium:
+    image: debezium/connect:1.9
+    container_name: debezium
+    depends_on:
+      - broker
+    ports:
+      - 8083:8083
+    env_file:
+      - env
+    volumes:
+      - ./kafka-connect:/kafka-connect
+    networks:
+      - my-network
+
+volumes:
+  mysql_data:
+
+networks:
+  my-network:
