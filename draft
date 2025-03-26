@@ -77,7 +77,19 @@ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" 
 
 quyen load data, reload
 
+curl -H "Accept:application/json" localhost:8083/connectors/
 
+1. set up docker-compose.yml < env
+2. docker-compose up -d
+3. localhost:9089 < kafka ui
+  & localhost:9001 < minio ui
+4. mysql-connector.json
+5. curl -H "Accept:application/json" localhost:8083/connectors/ 
+  & curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @debezium-mysql-connector.json
+  & curl -X DELETE http://localhost:8083/connectors/<connect-name>
+6. docker exec -it mysql mysql -u lminhnguyet -p -D brazilian_ecom
+7. docker exec -it spark-worker bash
+  & spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 /app/stream.py
 -- old
 # version: '3.1'
 
