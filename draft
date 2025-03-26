@@ -90,6 +90,11 @@ curl -H "Accept:application/json" localhost:8083/connectors/
 6. docker exec -it mysql mysql -u lminhnguyet -p -D brazilian_ecom
 7. docker exec -it spark-worker bash
   & spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 /app/stream.py
+
+docker exec -it spark-master bash -c "apt-get update && apt-get install -y iputils-ping && ping kafka"
+
+
+
 -- old
 # version: '3.1'
 

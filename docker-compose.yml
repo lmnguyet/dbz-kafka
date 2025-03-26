@@ -68,6 +68,7 @@ services:
 
   minio:
     image: quay.io/minio/minio
+    hostname: minio
     container_name: minio
     ports:
      - 9000:9000
@@ -80,15 +81,20 @@ services:
     networks:
       - my-network
 
-  spark:
-    image: docker.io/bitnami/spark:3.3
-    container_name: spark
+  spark-master:
+    # image: docker.io/bitnami/spark:3.3
+    build: 
+      context: ./spark
+      dockerfile: ./Dockerfile
+    container_name: spark-master
     env_file:
       - envs/spark-master.env
     ports:
+      - 7077:7077
       - 8080:8080
     volumes:
       - ./spark:/app
+      - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
       # - ./spark/jars:/opt/bitnami/spark/jars/custom-libs
     depends_on:
       - kafka
@@ -105,9 +111,27 @@ services:
       - ./spark:/app
       # - ./spark/jars:/opt/bitnami/spark/jars/custom-libs
     depends_on:
-      - spark
+      - spark-master
     # entrypoint: /app/entrypoint.sh
     # command: spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 /app/stream.py
+    networks:
+      - my-network
+  
+  spark-notebook:
+    build:
+      context: ./notebook
+      dockerfile: ./Dockerfile
+    container_name: spark-notebook
+    user: root
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - GRANT_SUDO=yes
+    volumes:
+      - ./notebook:/home/jovyan/work
+      - ./spark/spark-defaults.conf:/usr/local/spark/conf/spark-defaults.conf
+    ports:
+      - 4040:4040
+      - 8888:8888
     networks:
       - my-network
 
@@ -117,3 +141,4 @@ volumes:
 
 networks:
   my-network:
+    driver: bridge

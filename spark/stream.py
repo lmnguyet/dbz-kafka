@@ -17,11 +17,6 @@ def main():
         .config("spark.jars.packages", 
                 "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0") \
         .config("spark.jars.repositories", "https://repo1.maven.org/maven2") \
-                # "org.apache.hadoop:hadoop-aws:3.3.0") \
-        # .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
-        # .config("spark.hadoop.fs.s3a.access.key", "root") \
-        # .config("spark.hadoop.fs.s3a.secret.key", "rootpassword") \
-        # .config("spark.hadoop.fs.s3a.path.style.access", "true") \
         .getOrCreate()
         
     # read_stream
@@ -46,10 +41,10 @@ def main():
         col("value").cast("string").alias("json_string")
         )
 
-    query = json_string_df.writeStream \
-        .format("console") \        
-        .outputMode("append") \        
-        .option("truncate", "false") \ 
+    query = json_string_df.writeStream\
+        .format("console")\
+        .outputMode("append")\
+        .option("truncate", "false") \
         .start()
 
     
@@ -58,3 +53,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+        # "org.apache.hadoop:hadoop-aws:3.3.0") \
+# .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
+# .config("spark.hadoop.fs.s3a.access.key", "root") \
+# .config("spark.hadoop.fs.s3a.secret.key", "rootpassword") \
+# .config("spark.hadoop.fs.s3a.path.style.access", "true") \
