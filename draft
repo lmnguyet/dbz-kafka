@@ -1,3 +1,53 @@
+Docker WSL Ubuntu version
+I. dataset: https://mavenanalytics.io => Pixar Films
+II Set up docker services
+1. MySQL
+...
+
+Check database
+docker exec -it mysql mysql -u lminhnguyet -p -D pixar_films
+show tables;
+select * from films;
+select * from film_ratings;
+
+2. ZooKeeper & Kafka & Kafka UI
+...
+
+3. Debezium: Kafka Connect
+curl -H "Accept:application/json" localhost:8083/connectors/ 
+curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @mysql-connector.json
+curl -X DELETE http://localhost:8083/connectors/mysql-connector
+
+4. MinIO
+...
+
+5. Spark
+...
+
+spark.jars.packages                                 org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0
+
+docker exec -u root -it spark-master bash 
+
+spark-submit /app/stream.py
+
+##==========================================
+1. set up docker-compose.yml < env
+2. docker-compose up -d
+3. localhost:9089 < kafka ui
+  & localhost:9001 < minio ui
+4. mysql-connector.json
+5. curl -H "Accept:application/json" localhost:8083/connectors/ 
+  & curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @debezium-mysql-connector.json
+  & curl -X DELETE http://localhost:8083/connectors/<connect-name>
+6. docker exec -it mysql mysql -u lminhnguyet -p -D brazilian_ecom
+7. docker exec -u root -it spark-master spark-submit /app/stream.py
+
+docker exec -it spark-master bash -c "apt-get update && apt-get install -y iputils-ping && ping kafka"
+https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.12/3.5.0/spark-token-provider-kafka-0-10_2.12-3.5.0.jar
+version: kafka - spark
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 /app/stream.py
+
+---=====================================================
 #!/bin/bash
 echo "Importing CSV into MySQL..."
 
@@ -79,21 +129,7 @@ quyen load data, reload
 
 curl -H "Accept:application/json" localhost:8083/connectors/
 
-1. set up docker-compose.yml < env
-2. docker-compose up -d
-3. localhost:9089 < kafka ui
-  & localhost:9001 < minio ui
-4. mysql-connector.json
-5. curl -H "Accept:application/json" localhost:8083/connectors/ 
-  & curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @debezium-mysql-connector.json
-  & curl -X DELETE http://localhost:8083/connectors/<connect-name>
-6. docker exec -it mysql mysql -u lminhnguyet -p -D brazilian_ecom
-7. docker exec -u root -it spark-master bash && spark-submit /app/stream.py
 
-docker exec -it spark-master bash -c "apt-get update && apt-get install -y iputils-ping && ping kafka"
-https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.12/3.5.0/spark-token-provider-kafka-0-10_2.12-3.5.0.jar
-version: kafka - spark
-spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 /app/stream.py
 -- old
 # version: '3.1'
 

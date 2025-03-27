@@ -12,7 +12,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./dataset:/var/lib/mysql-files
-      - ./scripts:/docker-entrypoint-initdb.d
+      - ./init_db_scripts:/docker-entrypoint-initdb.d
     command: --local_infile=1
     networks:
       - my-network

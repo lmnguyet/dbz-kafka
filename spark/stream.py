@@ -13,57 +13,52 @@ def write_bucket():
 def main():
     # config spark session
     spark = SparkSession.builder \
-        .appName("KafkaToMinIO") \
-        .config("spark.executor.memory", "4g") \
-        .config("spark.driver.memory", "2g") \
+        .appName("SpakApp") \
+        .config("spark.delta.logStore.class", "org.apache.spark.sql.delta.storage.S3SingleDriverLogStore")\
+        .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")\
         .getOrCreate()
         
     # read_stream
     df = spark.readStream \
         .format("kafka") \
         .option("kafka.bootstrap.servers", "kafka:9092") \
-        .option("subscribe", "my-connect-configs") \
+        .option("subscribe", "dbserver1.pixar_films.films") \
         .option("startingOffsets", "earliest") \
-        .option("maxOffsetsPerTrigger", "1") \
         .load()
 
     df.printSchema()
 
-    df = df.select(col("key").cast("string"),col("value").cast("string"),"topic","partition","offset","timestamp","timestampType")
+    df = df.selectExpr("CAST(value as STRING) as value_str", "value")
+    # df = df.select(col("key").cast("string"),col("value").cast("string"),"topic","partition","offset","timestamp","timestampType")
+
+    # query = df.writeStream \
+    # .outputMode("append") \
+    # .format("memory") \
+    # .queryName("kafka_results") \
+    # .start()
+
+    # import time
+    # time.sleep(90)
+
+    # print("printing df...")
+    # spark.sql("SELECT * FROM kafka_results").show(truncate=False)
+
+    # query = df.writeStream \
+    # .format("delta") \
+    # .option("path", "s3a://test/films") \
+    # .option("checkpointLocation", "s3a://test/checkpoints") \
+    # .start()
 
     query = df.writeStream \
+    .format("delta") \
     .outputMode("append") \
-    .format("memory") \
-    .queryName("kafka_results") \
-    .start()
-    # query = df.writeStream \
-    # .outputMode("append") \
-    # .format("memory") \
-    # .queryName("kafka_results") \
-    # .start()
-    # query = df.writeStream \
-    # .outputMode("append") \
-    # .format("memory") \
-    # .queryName("kafka_results") \
-    # .start()
+    .option("path", "s3a://test/films") \
+    .option("checkpointLocation", "s3a://test/checkpoints").start()
 
-    import time
-    time.sleep(90)
-
-    print("printing df...")
-    spark.sql("SELECT * FROM kafka_results").show()
+    df1 = spark.read.format("delta").load("s3a://test/films")
+    print(df1)
 
     query.awaitTermination()
-
-    # write_bucket
-    # query = df.writeStream \
-    #     .format("parquet") \
-    #     .option("path", "s3a://brazilianecom/orders") \
-    #     .option("checkpointLocation", "s3a://brazilianecom/checkpoint") \
-    #     .start()
-    # json_string_df = df.select(
-    #     col("value").cast("string").alias("json_string")
-    #     )
 
     spark.stop()
     
