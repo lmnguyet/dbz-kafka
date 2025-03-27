@@ -88,13 +88,12 @@ curl -H "Accept:application/json" localhost:8083/connectors/
   & curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @debezium-mysql-connector.json
   & curl -X DELETE http://localhost:8083/connectors/<connect-name>
 6. docker exec -it mysql mysql -u lminhnguyet -p -D brazilian_ecom
-7. docker exec -it spark-worker bash
-  & spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 /app/stream.py
+7. docker exec -u root -it spark-master bash && spark-submit /app/stream.py
 
 docker exec -it spark-master bash -c "apt-get update && apt-get install -y iputils-ping && ping kafka"
-
-
-
+https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.12/3.5.0/spark-token-provider-kafka-0-10_2.12-3.5.0.jar
+version: kafka - spark
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 /app/stream.py
 -- old
 # version: '3.1'
 
@@ -172,3 +171,30 @@ volumes:
 
 networks:
   my-network:
+
+
+-=----------------------
+FROM docker.io/bitnami/spark:3.3
+
+USER root
+
+# Install prerequisites
+RUN apt-get update && apt-get install -y curl
+
+RUN curl -O https://repo1.maven.org/maven2/software/amazon/awssdk/s3/2.18.41/s3-2.18.41.jar \
+    && curl -O https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk/1.12.367/aws-java-sdk-1.12.367.jar \
+    && curl -O https://repo1.maven.org/maven2/io/delta/delta-core_2.12/2.2.0/delta-core_2.12-2.2.0.jar \
+    && curl -O https://repo1.maven.org/maven2/io/delta/delta-storage/2.2.0/delta-storage-2.2.0.jar \
+    && curl -O https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.19/mysql-connector-java-8.0.19.jar \
+    && curl -O https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/3.3.0/spark-sql-kafka-0-10_2.13-3.3.0.jar \
+    && mv s3-2.18.41.jar /opt/bitnami/spark/jars \
+    && mv aws-java-sdk-1.12.367.jar /opt/bitnami/spark/jars \
+    && mv delta-core_2.12-2.2.0.jar /opt/bitnami/spark/jars \
+    && mv delta-storage-2.2.0.jar /opt/bitnami/spark/jars \
+    && mv mysql-connector-java-8.0.19.jar /opt/bitnami/spark/jars \
+    && mv spark-sql-kafka-0-10_2.13-3.3.0.jar /opt/bitnami/spark/jars
+
+
+    && curl -O https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.5.0/spark-sql-kafka-0-10_2.12-3.5.0.jar \
+    \
+    && mv spark-sql-kafka-0-10_2.12-3.5.0.jar /opt/bitnami/spark/jars

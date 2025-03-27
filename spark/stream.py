@@ -14,22 +14,46 @@ def main():
     # config spark session
     spark = SparkSession.builder \
         .appName("KafkaToMinIO") \
-        .config("spark.jars.packages", 
-                "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0") \
-        .config("spark.jars.repositories", "https://repo1.maven.org/maven2") \
+        .config("spark.executor.memory", "4g") \
+        .config("spark.driver.memory", "2g") \
         .getOrCreate()
         
     # read_stream
     df = spark.readStream \
         .format("kafka") \
         .option("kafka.bootstrap.servers", "kafka:9092") \
-        .option("subscribe", "dbserver1.brazilian_ecom.orders") \
+        .option("subscribe", "my-connect-configs") \
         .option("startingOffsets", "earliest") \
+        .option("maxOffsetsPerTrigger", "1") \
         .load()
-    
 
-    # create_bucket
+    df.printSchema()
 
+    df = df.select(col("key").cast("string"),col("value").cast("string"),"topic","partition","offset","timestamp","timestampType")
+
+    query = df.writeStream \
+    .outputMode("append") \
+    .format("memory") \
+    .queryName("kafka_results") \
+    .start()
+    # query = df.writeStream \
+    # .outputMode("append") \
+    # .format("memory") \
+    # .queryName("kafka_results") \
+    # .start()
+    # query = df.writeStream \
+    # .outputMode("append") \
+    # .format("memory") \
+    # .queryName("kafka_results") \
+    # .start()
+
+    import time
+    time.sleep(90)
+
+    print("printing df...")
+    spark.sql("SELECT * FROM kafka_results").show()
+
+    query.awaitTermination()
 
     # write_bucket
     # query = df.writeStream \
@@ -37,19 +61,12 @@ def main():
     #     .option("path", "s3a://brazilianecom/orders") \
     #     .option("checkpointLocation", "s3a://brazilianecom/checkpoint") \
     #     .start()
-    json_string_df = df.select(
-        col("value").cast("string").alias("json_string")
-        )
+    # json_string_df = df.select(
+    #     col("value").cast("string").alias("json_string")
+    #     )
 
-    query = json_string_df.writeStream\
-        .format("console")\
-        .outputMode("append")\
-        .option("truncate", "false") \
-        .start()
-
+    spark.stop()
     
-
-    query.awaitTermination()
 
 if __name__ == "__main__":
     main()

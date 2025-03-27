@@ -1,2 +1,3 @@
 dataset/
 mysql/
+spark/jars/*.jar

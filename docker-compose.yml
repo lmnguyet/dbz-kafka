@@ -93,9 +93,8 @@ services:
       - 7077:7077
       - 8080:8080
     volumes:
-      - ./spark:/app
+      - ./spark/stream.py:/app/stream.py
       - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
-      # - ./spark/jars:/opt/bitnami/spark/jars/custom-libs
     depends_on:
       - kafka
       - minio
@@ -103,13 +102,13 @@ services:
       - my-network
 
   spark-worker:
-    image: docker.io/bitnami/spark:3.3
+    image: docker.io/bitnami/spark:3.5
     container_name: spark-worker
     env_file:
       - envs/spark-worker.env
     volumes:
-      - ./spark:/app
-      # - ./spark/jars:/opt/bitnami/spark/jars/custom-libs
+      # - ./spark/stream.py:/app/stream.py
+      - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
     depends_on:
       - spark-master
     # entrypoint: /app/entrypoint.sh
@@ -117,23 +116,23 @@ services:
     networks:
       - my-network
   
-  spark-notebook:
-    build:
-      context: ./notebook
-      dockerfile: ./Dockerfile
-    container_name: spark-notebook
-    user: root
-    environment:
-      - JUPYTER_ENABLE_LAB=yes
-      - GRANT_SUDO=yes
-    volumes:
-      - ./notebook:/home/jovyan/work
-      - ./spark/spark-defaults.conf:/usr/local/spark/conf/spark-defaults.conf
-    ports:
-      - 4040:4040
-      - 8888:8888
-    networks:
-      - my-network
+  # spark-notebook:
+  #   build:
+  #     context: ./notebook
+  #     dockerfile: ./Dockerfile
+  #   container_name: spark-notebook
+  #   user: root
+  #   environment:
+  #     - JUPYTER_ENABLE_LAB=yes
+  #     - GRANT_SUDO=yes
+  #   volumes:
+  #     - ./notebook:/home/jovyan/work
+  #     - ./spark/spark-defaults.conf:/usr/local/spark/conf/spark-defaults.conf
+  #   ports:
+  #     - 4040:4040
+  #     - 8888:8888
+  #   networks:
+  #     - my-network
 
 volumes:
   mysql_data:
