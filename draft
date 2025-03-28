@@ -1,5 +1,5 @@
 Docker WSL Ubuntu version
-I. dataset: https://mavenanalytics.io => Pixar Films
+I. dataset: https://mavenanalytics.io/data-playground => Pixar Films
 II Set up docker services
 1. MySQL
 ...
@@ -9,6 +9,9 @@ docker exec -it mysql mysql -u lminhnguyet -p -D pixar_films
 show tables;
 select * from films;
 select * from film_ratings;
+
+insert into films values (29,'Inside Out 3', '2025-01-01', '90', 'PG', '');
+update films set run_time=100 where film='Inside Out 3';
 
 2. ZooKeeper & Kafka & Kafka UI
 ...

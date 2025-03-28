@@ -27,6 +27,7 @@ COPY ./jars/*.jar /opt/bitnami/spark/jars
 #     && mv spark-token-provider-kafka-0-10_2.12-3.5.0.jar /opt/bitnami/spark/jars
 
 RUN export PYSPARK_SUBMIT_ARGS="--master spark://spark-master:7077 pyspark-shell"
+RUN pip install minio delta-spark
 # curl -O https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.5.0/kafka-clients-3.5.0.jar && mv kafka-clients-3.5.0.jar /opt/bitnami/spark/jars
 # curl -O https://repo1.maven.org/maven2/org/apache/spark/spark-streaming-kafka-0-10_2.12/3.5.0/spark-streaming-kafka-0-10_2.12-3.5.0.jar && mv spark-streaming-kafka-0-10_2.12-3.5.0.jar /opt/bitnami/spark/jars
 # curl -O https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.12/3.5.0/spark-token-provider-kafka-0-10_2.12-3.5.0.jar

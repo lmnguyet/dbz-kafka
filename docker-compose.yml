@@ -113,6 +113,7 @@ services:
       - spark-master
     # entrypoint: /app/entrypoint.sh
     # command: spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 /app/stream.py
+    # command: pip install minio delta-spark
     networks:
       - my-network
   
