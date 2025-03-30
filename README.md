@@ -24,7 +24,7 @@ This project uses the Pixar Films dataset from [Maven Analytics](https://mavenan
 ### 1. MySQL
 MySQL 8.0
 
-Database: pixal_films
+Database: `pixal_films`
 
 Check if the database is built successfully:
 
