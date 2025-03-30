@@ -69,7 +69,7 @@ Debezium 3.0
 
 ```spark.jars.packages                                 org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0```
 
-**All the jar libraries are version compatible with services used in this project.**
+**ALL THE JAR LIBRARIES ARE VERSION COMPATIBLE WITH SERVICES USED IN THIS PROJECT.**
 
 ## Run the pipeline
 ### 1. Run all docker services
@@ -105,7 +105,7 @@ $ curl -H "Accept:application/json" localhost:8083/connectors/
 
 Changed data are captured as messages under the topic `dbserver1.pixar_films.films` as configured in Kafka Connector.
 
-![](images/image.png)
+![](images/kafka-ui.png)
 
 ### 4. Submit a Spark job to stream from Kafka to MinIO
 
