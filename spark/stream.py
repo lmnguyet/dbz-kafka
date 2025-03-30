@@ -1,25 +1,46 @@
+import time
+import logging
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import *
+from pyspark.sql import functions as f
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
-import time
 from delta.tables import DeltaTable
+from minio import Minio
+from minio.error import S3Error
 
 # create spark session
-spark = SparkSession.builder \
+SPARK = SparkSession.builder \
         .appName("SpakApp") \
         .getOrCreate()
 
-delta_path = "s3a://test2/films"
+KAFKA_TOPIC = "dbserver1.pixar_films.films"
+
+BUCKET_NAME = "pixarfilms"
+
+DELTA_PATH = f"s3a://{BUCKET_NAME}/films"
+CHECKPOINT_PATH = f"s3a://{BUCKET_NAME}/checkpoints"
+
+MINIO_CONFIG = {
+    "endpoint": "minio:9000",
+    "access_key": "minio",
+    "secret_key": "minio123"
+}
+
+logging.basicConfig(
+    filename='/app/stream.log',
+    filemode='w',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 # read stream from kafka
 def read_stream():
-    df = spark.readStream \
+    df = SPARK.readStream \
         .format("kafka") \
         .option("kafka.bootstrap.servers", "kafka:9092") \
-        .option("subscribe", "dbserver1.pixar_films.films") \
+        .option("subscribe", KAFKA_TOPIC) \
         .option("startingOffsets", "earliest") \
-        .option("failOnDataLoss", "false") \
         .load()
     return df
 
@@ -33,115 +54,136 @@ def process_stream(df):
             , StructField("after", StructType([
                 StructField("number", IntegerType(), nullable=False),
                 StructField("film", StringType(), nullable=False),
-                StructField("release_date", DateType(), nullable=True),
+                StructField("release_date", IntegerType(), nullable=True),
                 StructField("run_time", IntegerType(), nullable=True),
                 StructField("film_rating", StringType(), nullable=True),
                 StructField("plot", StringType(), nullable=True)
             ]))
             , StructField("op", StringType(), nullable=False)
-            # , StructField("ts_ms", IntegerType(), nullable=False)
+            , StructField("ts_ms", IntegerType(), nullable=False)
         ]))
     ])
 
-    processed_df = df.select(from_json(col("value").cast("string"), schema).alias("parsed_value"))
+    parsed_df = df.select(f.from_json(f.col("value").cast("string"), schema).alias("parsed_value"))\
+    .withColumn("release_date", f.date_add(f.lit("1970-01-01").cast("date"), f.col("parsed_value.payload.after.release_date")))
 
-    # window_spec = Window.partitionBy(
-    #     when(col("parsed_value.payload.op") == "d", col("parsed_value.payload.before.number"))\
-    #     .otherwise(col("parsed_value.payload.after.number"))
-    # ).orderBy(desc("parsed_value.payload.ts_ms"))
+    processed_df = parsed_df\
+    .select(
+        f.when(f.col("parsed_value.payload.op") == "d", f.col("parsed_value.payload.before.number")).otherwise(f.col("parsed_value.payload.after.number")).cast("int").alias("number"),
+        f.col("parsed_value.payload.after.film"),
+        f.col("release_date"),
+        f.col("parsed_value.payload.after.run_time").cast("int").alias("run_time"),
+        f.col("parsed_value.payload.after.film_rating"),
+        f.col("parsed_value.payload.after.plot"),
+        f.col("parsed_value.payload.op"),
+        f.col("parsed_value.payload.ts_ms").cast("int").alias("ts_ms")
+    )
 
-    # processed_df = parsed_df.withColumn("row_num", row_number().over(window_spec)) \
-    #     .filter("row_num = 1") \
-    #     .drop("row_num")
-    
-    upsert_df = processed_df.select(\
-            when(col("parsed_value.payload.op") == "d", col("parsed_value.payload.before.number")).otherwise(col("parsed_value.payload.after.number")), \
-            col("parsed_value.payload.after.film"),\
-            col("parsed_value.payload.after.release_date").cast("date"),\
-            col("parsed_value.payload.after.run_time"),\
-            col("parsed_value.payload.after.film_rating"),\
-            col("parsed_value.payload.after.plot"),\
-            col("parsed_value.payload.op")
-        )
-    # , col("parsed_value.payload.op"))
-    return upsert_df
+    logging.info(f"SCHEMA OF THE PROCESSED DATAFRAME \n{processed_df.schema} \n")
+
+    return processed_df
 
 # create bucket and delta table if not exist
-def create_bucket():
-    pass
+def create_delta_table():
+    try:
+        client = Minio(endpoint=MINIO_CONFIG["endpoint"], access_key=MINIO_CONFIG["access_key"], secret_key=MINIO_CONFIG["secret_key"], secure=False)
+        
+        if not client.bucket_exists(BUCKET_NAME):
+            client.make_bucket(BUCKET_NAME)
+            logging.info(f"CREATING NEW BUCKET {BUCKET_NAME} \n")
+        else:
+            logging.info(f"BUCKET {BUCKET_NAME} ALREADY EXISTS \n")
+            
+    except S3Error as e:
+        logging.error(f"MINIO ERROR WHILE CREATING NEW BUCKET {str(e)} \n")
+        raise
+    except Exception as e:
+        logging.error(f"OTHER ERROR WHILE CREATING NEW BUCKET {str(e)} \n")
+        raise
 
-# write stream into delta table
-def write_bucket():
-    pass
+    if not DeltaTable.isDeltaTable(SPARK, DELTA_PATH):
+        logging.info(f"CREATING NEW DELTA TABLE AT {DELTA_PATH} \n")
+        SPARK.sql(f"""
+            CREATE TABLE delta.`{DELTA_PATH}` (
+                number INT,
+                film STRING,
+                release_date DATE,
+                run_time INT,
+                film_rating STRING,
+                plot STRING
+            )
+            USING DELTA;
+        """)
+        logging.info(f"CREATED NEW DELTA TABLE AT {DELTA_PATH} \n")
 
 # refresh query data from delta table
 def refresh():
+    refresh_count = 1
     while True:
-        if DeltaTable.isDeltaTable(spark, delta_path):
-            df = spark.read.format("delta").load(delta_path)
-            print(f"Tổng số bản ghi: {df.count()}")
-            df.show(40)
+        logging.info(f"NUMBER OF REFRESHING: {refresh_count} \n")
+
+        if DeltaTable.isDeltaTable(SPARK, DELTA_PATH):
+            df = SPARK.read.format("delta").load(DELTA_PATH)
+            logging.info(f"NUMBER OF RECORDS: {df.count()} \n")
+            logging.info("\n" + df._jdf.showString(40, 20, False) + "\n")
         else:
-            print(f"Delta Table tại {delta_path} chưa tồn tại!")
+            logging.info(f"DELTA TABLE AT {DELTA_PATH} DOES NOT EXIST \n")
+        
+        refresh_count += 1
+
         time.sleep(30)
 
 def upsertToDelta(microBatchOutputDF, batchId):
-    if not DeltaTable.isDeltaTable(spark, delta_path):
-        print("Creating delta table ...")
-        microBatchOutputDF.limit(0).write.format("delta").save(delta_path)
+    window_spec = Window.partitionBy("number").orderBy(f.col("ts_ms").desc())
 
-    delta_table = DeltaTable.forPath(spark, delta_path)
+    processed_df = microBatchOutputDF.withColumn("row_num", f.row_number().over(window_spec))
     
-    (delta_table.alias("t").merge(
-        microBatchOutputDF.alias("s"),
-        "s.number = t.number")
+    processed_df = processed_df.filter(f.col("row_num") == 1).drop("row_num", "ts_ms")
+
+    upsert_df = processed_df.filter(f.col("op") != "d").drop("op")
+    delete_df = processed_df.filter(f.col("op") == "d").drop("op")
+
+    delta_table = DeltaTable.forPath(SPARK, DELTA_PATH)
+
+    (delta_table.alias("target").merge(
+        upsert_df.alias("source"),
+        "source.number = target.number")
         .whenMatchedUpdateAll()
         .whenNotMatchedInsertAll()
         .execute()
-        # .whenMatchedDelete("s.op = 'd'")
+    )
+    
+    (delta_table.alias("target").merge(
+        delete_df.alias("source"),
+        "source.number = target.number")
+        .whenMatchedDelete()
+        .execute()
     )
 
+# write stream into delta table
+def write_stream(processed_df):
+    query = processed_df.writeStream\
+    .foreachBatch(upsertToDelta)\
+    .outputMode("update")\
+    .option("checkpointLocation", CHECKPOINT_PATH)\
+    .start()
+    return query
+
 def main():
-        
-    # read_stream
+    create_delta_table()
+
     df = read_stream()
 
     processed_df = process_stream(df)
 
-    # spark.sql(f"""
-    # CREATE TABLE IF NOT EXISTS delta.`s3a://test1/films` (
-    #     number INT,
-    #     film STRING,
-    #     release_date DATE,
-    #     run_time INT,
-    #     film_rating STRING,
-    #     plot STRING
-    # ) USING DELTA
-    # """)
-    # delta_table = DeltaTable.forPath(spark, delta_path)
-
-    query = processed_df.writeStream\
-    .foreachBatch(upsertToDelta)\
-    .option("checkpointLocation", "s3a://test2/checkpoints")\
-    .outputMode("update")\
-    .start()
+    query = write_stream(processed_df)
 
     refresh()
 
     query.awaitTermination()
 
-    spark.stop()
+    SPARK.stop()
     
 
 if __name__ == "__main__":
     main()
-    # spark.sql("select * from delta.`s3a://test1/films`").show(40)
-    # test()
-
-
-
-        # "org.apache.hadoop:hadoop-aws:3.3.0") \
-# .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
-# .config("spark.hadoop.fs.s3a.access.key", "root") \
-# .config("spark.hadoop.fs.s3a.secret.key", "rootpassword") \
-# .config("spark.hadoop.fs.s3a.path.style.access", "true") \

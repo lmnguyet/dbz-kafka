@@ -12,6 +12,7 @@ select * from film_ratings;
 
 insert into films values (29,'Inside Out 3', '2025-01-01', '90', 'PG', '');
 update films set run_time=100 where film='Inside Out 3';
+delete from films where film='Inside Out 3';
 
 2. ZooKeeper & Kafka & Kafka UI
 ...
@@ -32,6 +33,30 @@ spark.jars.packages                                 org.apache.spark:spark-sql-k
 docker exec -u root -it spark-master bash 
 
 spark-submit /app/stream.py
+
+#===================================================
+
+tất cả transaction trên mysql đều được ghi trong binlog
+=> mỗi lần connect lại dbz vẫn sẽ đọc đủ log
+=> mỗi 1 transaction là 1 message
+=> nếu dbz hay kafka crash và phải restart, vẫn sẽ có full message dựa trên binlog
+==> tuy nhiên, làm sao để từ kafka -> minio tiếp tục đọc log mới chứ k xử lý lại log cũ?
+** có thể xử lý lại rồi merge lại? => k cần thiết nhưng k ảnh hưởng
+
+lần đầu connect từ kafka -> minio (chưa có checkpoint) sẽ dựa vào startingOffsets để xem đọc bắt đầu từ đâu
+startingOffsets="earliest" => đọc từ message đầu tiên trong kafka
+startingOffsets="latest" => chỉ đọc từ message mới sau thời điểm query
+sau khi có checkpoint ghi lại connect giữa 2 bên, các lần sau restart sẽ đọc tiếp tục dựa vào checkpoint chứ k đọc lại
+
+
+
+
+giả sử data được update lên kafka qua debezium và được đồng bộ từ kafka qua minio theo kiểu merge,
+nếu tại 1 thời điểm, 1 record ở source được update 2 lần thì ở kafka cũng sẽ sinh ra 2 message chứa cùng data này, 
+vậy nên khi merge vào minio sẽ phải xử lý chỉ lựa chọn message gần nhất, như vậy có đúng không? 
+nhưng trong thực tế trường hợp này có xảy ra không? 
+liệu có phải vì source, kafka và minio đang được đồng bộ nên mỗi message đều sẽ lần lượt được merge riêng lẻ, 
+và như vậy sẽ không phải xử lý trùng lặp?
 
 ##==========================================
 1. set up docker-compose.yml < env

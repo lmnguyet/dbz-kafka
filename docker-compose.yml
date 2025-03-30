@@ -6,7 +6,7 @@ services:
     container_name: mysql
     restart: always
     env_file:
-      - .env
+      - envs/mysql.env
     ports:
       - 3306:3306
     volumes:
@@ -37,7 +37,7 @@ services:
     ports:
       - 9092:9092
     env_file:
-      - .env
+      - envs/kafka.env
     networks:
       - my-network
 
@@ -50,7 +50,7 @@ services:
     ports:
       - 8083:8083
     env_file:
-      - .env
+      - envs/kafka-connect.env
     networks:
       - my-network
 
@@ -62,7 +62,7 @@ services:
     ports:
       - 9089:8080
     env_file:
-      - .env
+      - envs/kafka.env
     networks:
       - my-network
 
@@ -74,7 +74,7 @@ services:
      - 9000:9000
      - 9001:9001
     env_file:
-      - .env
+      - envs/minio.env
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -82,7 +82,6 @@ services:
       - my-network
 
   spark-master:
-    # image: docker.io/bitnami/spark:3.3
     build: 
       context: ./spark
       dockerfile: ./Dockerfile
@@ -94,6 +93,7 @@ services:
       - 8080:8080
     volumes:
       - ./spark/stream.py:/app/stream.py
+      - ./spark/stream.log:/app/stream.log
       - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
     depends_on:
       - kafka
@@ -107,33 +107,11 @@ services:
     env_file:
       - envs/spark-worker.env
     volumes:
-      # - ./spark/stream.py:/app/stream.py
       - ./spark/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
     depends_on:
       - spark-master
-    # entrypoint: /app/entrypoint.sh
-    # command: spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 /app/stream.py
-    # command: pip install minio delta-spark
     networks:
       - my-network
-  
-  # spark-notebook:
-  #   build:
-  #     context: ./notebook
-  #     dockerfile: ./Dockerfile
-  #   container_name: spark-notebook
-  #   user: root
-  #   environment:
-  #     - JUPYTER_ENABLE_LAB=yes
-  #     - GRANT_SUDO=yes
-  #   volumes:
-  #     - ./notebook:/home/jovyan/work
-  #     - ./spark/spark-defaults.conf:/usr/local/spark/conf/spark-defaults.conf
-  #   ports:
-  #     - 4040:4040
-  #     - 8888:8888
-  #   networks:
-  #     - my-network
 
 volumes:
   mysql_data:
