@@ -2,3 +2,4 @@ dataset/
 mysql/
 spark/jars/*.jar
 .env
+draft

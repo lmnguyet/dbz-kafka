@@ -2,7 +2,7 @@
 
 A Docker-based pipeline to ingest and synchronize data from MySQL to MinIO Delta Table using Debezium for Changed Data Capture (CDC) and Spark for processing. Designed for real-time data replication and analytics.
 
-![](overal-flow.png)
+![](images/overal-flow.png)
 
 **What this project has done**
 - Captures MySQL changes via Debezium (CDC).
@@ -105,7 +105,7 @@ $ curl -H "Accept:application/json" localhost:8083/connectors/
 
 Changed data are captured as messages under the topic `dbserver1.pixar_films.films` as configured in Kafka Connector.
 
-![](image.png)
+![](images/image.png)
 
 ### 4. Submit a Spark job to stream from Kafka to MinIO
 
