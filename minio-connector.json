@@ -1,0 +1,20 @@
+{
+    "name": "minio-connector",
+    "config": {
+      "connector.class": "io.confluent.connect.s3.S3SinkConnector",
+      "tasks.max": "1",
+      "topics": "dbserver1.pixar_films.films",
+      "s3.bucket.name": "pixarfilms",
+      "s3.region": "us-east-1",
+      "s3.part.size": "5242880",
+      "store.url": "http://minio:9000",
+      "s3.access.key.id": "minio",
+      "s3.secret.access.key": "minio123",
+      "s3.ssl.enabled": "false",
+      "storage.class": "io.confluent.connect.s3.storage.S3Storage",
+      "format.class": "io.confluent.connect.s3.format.json.JsonFormat",
+      "partitioner.class": "io.confluent.connect.storage.partitioner.DefaultPartitioner",
+      "flush.size": "100",
+      "schema.compatibility": "NONE"
+    }
+  }
