@@ -11,9 +11,9 @@ A Docker-based pipeline to ingest and synchronize data from MySQL to MinIO Delta
 - Fully containerized with Docker for scalability.
 
 ## Prerequisites
-WSL version: 
+WSL version: 2.4.12.0
 
-Docker version:
+Docker version: 28.0.2
 
 [Read: Installing Docker on WSL](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
 
